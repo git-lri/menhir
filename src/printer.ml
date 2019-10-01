@@ -46,6 +46,8 @@ module PreliminaryMake (X : sig
 
   val locate_stretches: string option
 
+  val mode : Settings.print_mode
+
 end) = struct
 open X
 
@@ -81,9 +83,12 @@ let rawnl f =
   incr line;
   output_char f '\n'
 
-let nl f =
-  rawnl f;
-  output_substring f whitespace 0 !indentation
+let nl =
+  match mode with
+  | _ ->
+    fun f ->
+      rawnl f;
+      output_substring f whitespace 0 !indentation
 
 let indent ofs producer f x =
   let old_indentation = !indentation in
@@ -775,6 +780,7 @@ end
 module Make (X : sig
   val f: out_channel
   val locate_stretches: string option
+  val mode : Settings.print_mode
 end) = struct
   include PreliminaryMake(struct
     type channel = out_channel
@@ -790,6 +796,7 @@ end
 module MakeBuffered (X : sig
   val f: Buffer.t
   val locate_stretches: string option
+  val mode : Settings.print_mode
 end) = struct
   include PreliminaryMake(struct
     type channel = Buffer.t
@@ -802,21 +809,23 @@ end
 (* ------------------------------------------------------------------------- *)
 (* Common instantiations. *)
 
-let print_expr f e =
+let print_expr mode f e =
   let module P =
     Make (struct
       let f = f
       let locate_stretches = None
+      let mode = mode
     end)
   in
   P.expr e
 
-let string_of_expr e =
+let string_of_expr mode e =
   let b = Buffer.create 512 in
   let module P =
     MakeBuffered (struct
       let f = b
       let locate_stretches = None
+      let mode = mode
     end)
   in
   P.expr e;

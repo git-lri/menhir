@@ -222,6 +222,7 @@ let write grammar filename () =
   let module P = Printer.Make (struct
     let f = ml
     let locate_stretches = Some filename
+    let mode = Settings.PrintForOCamlyacc
   end) in
   P.program (program grammar);
   close_out ml

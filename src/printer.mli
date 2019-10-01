@@ -36,6 +36,8 @@ module Make (X : sig
 
   val locate_stretches: string option
 
+  val mode: Settings.print_mode
+
 end) : sig
 
   val program: IL.program -> unit
@@ -49,5 +51,5 @@ end
 (* Common instantiations. In the following two functions, [locate_stretches]
    is [None], so no line number directives are printed. *)
 
-val     print_expr: out_channel -> IL.expr -> unit
-val string_of_expr:                IL.expr -> string
+val     print_expr: Settings.print_mode -> out_channel -> IL.expr -> unit
+val string_of_expr: Settings.print_mode ->                IL.expr -> string

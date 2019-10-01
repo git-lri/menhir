@@ -49,6 +49,7 @@ let write program =
          bar.mly] will produce different files. Nevertheless, this seems
          useful/reasonable. *)
       Some filename
+    let mode = Settings.PrintForOCamlyacc
   end) in
   P.program program
 

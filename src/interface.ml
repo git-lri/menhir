@@ -188,6 +188,7 @@ let write grammar () =
   let module P = Printer.Make (struct
     let f = mli
     let locate_stretches = None
+    let mode = Settings.PrintForOCamlyacc
   end) in
   P.interface (interface grammar);
   close_out mli

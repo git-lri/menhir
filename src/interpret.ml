@@ -584,6 +584,7 @@ let compile_runs filename (runs : filtered_targeted_run list) : unit =
   let module P = Printer.Make (struct
     let f = stdout
     let locate_stretches = None
+    let mode = Settings.PrintForOCamlyacc
   end) in
   P.program program
 
