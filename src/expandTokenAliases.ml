@@ -142,4 +142,4 @@ let dealias_grammars aliasmap gs =
 
 let dealias_grammars gs =
   let aliasmap = collect_aliases_from_grammars gs in
-  dealias_grammars aliasmap gs
+  aliasmap, dealias_grammars aliasmap gs

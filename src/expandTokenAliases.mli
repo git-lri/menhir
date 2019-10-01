@@ -22,4 +22,4 @@
 
 open Syntax
 
-val dealias_grammars: partial_grammar list -> partial_grammar list
+val dealias_grammars: partial_grammar list -> aliasmap * partial_grammar list

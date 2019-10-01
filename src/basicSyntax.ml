@@ -86,6 +86,7 @@ type grammar =  {
     start_symbols   : StringSet.t;
     types           : Stretch.ocamltype StringMap.t;
     tokens          : Syntax.token_properties StringMap.t;
+    aliasmap        : aliasmap;
     on_error_reduce : on_error_reduce_level StringMap.t;
     gr_attributes   : attributes;
     rules           : rule StringMap.t;

@@ -49,6 +49,9 @@ type symbol =
 type alias =
     string option
 
+type aliasmap =
+  (terminal * Positions.t) StringMap.t
+
 (* Identifiers (which are used to refer to a symbol's semantic value) are
    strings. *)
 
@@ -354,6 +357,7 @@ type partial_grammar =
       p_start_symbols      : Positions.t StringMap.t;
       p_types              : (parameter * Stretch.ocamltype located) list;
       p_tokens             : token_properties StringMap.t;
+      p_aliasmap           : aliasmap;
       p_on_error_reduce    : (parameter * on_error_reduce_level) list;
       p_grammar_attributes : attributes;
       p_symbol_attributes  : (parameter list * attributes) list;

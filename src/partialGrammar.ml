@@ -579,6 +579,7 @@ let empty_grammar =
     p_start_symbols           = StringMap.empty;
     p_types                   = [];
     p_tokens                  = StringMap.empty;
+    p_aliasmap                = StringMap.empty;
     p_rules                   = StringMap.empty;
     p_on_error_reduce         = [];
     p_grammar_attributes      = [];
@@ -761,13 +762,13 @@ let check_parameterized_grammar_is_well_defined grammar =
 
 let join_partial_grammars pgs =
   (* Prior to joining the partial grammars, remove all uses of token aliases. *)
-  let pgs = ExpandTokenAliases.dealias_grammars pgs in
+  let aliasmap, pgs = ExpandTokenAliases.dealias_grammars pgs in
   (* Join the partial grammars. *)
   let grammar = List.fold_left join empty_grammar pgs in
   let symbols = List.map (symbols_of grammar) pgs in
   let tpgs = List.combine symbols pgs in
   let rules = merge_rules symbols tpgs in
-  let grammar = { grammar with p_rules = rules } in
+  let grammar = { grammar with p_aliasmap = aliasmap; p_rules = rules } in
   (* Check well-formedness. *)
   check_parameterized_grammar_is_well_defined grammar;
   grammar

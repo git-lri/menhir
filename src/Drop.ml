@@ -140,6 +140,7 @@ let drop (g : S.grammar) : T.grammar =
     T.start_symbols   = StringMap.domain g.S.p_start_symbols;
     T.types           = drop_type_declarations g.S.p_types;
     T.tokens          = g.S.p_tokens;
+    T.aliasmap        = g.S.p_aliasmap;
     T.on_error_reduce = drop_on_error_reduce_declarations g.S.p_on_error_reduce;
     T.gr_attributes   = g.S.p_grammar_attributes;
     T.rules           = StringMap.map drop_rule g.S.p_rules
