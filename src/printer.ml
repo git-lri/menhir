@@ -85,6 +85,9 @@ let rawnl f =
 
 let nl =
   match mode with
+  | Settings.PrintForHappy ->
+    (* disabling newlines to print a potential indentation sensitive code *)
+    (fun f -> output_char f ' ')
   | _ ->
     fun f ->
       rawnl f;

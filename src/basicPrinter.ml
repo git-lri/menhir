@@ -34,10 +34,13 @@ open Settings
    ocamlyacc-compatible output. This means, in particular, that we cannot bind
    identifiers to semantic values, but must use [$i] instead.
 
-   [PrintUnitActions _] causes all OCaml code to be suppressed: the semantic
-   actions are replaced with unit actions, preludes and postludes disappear,
-   %parameter declarations disappear. Every %type declaration carries the
-   [unit] type.
+   [PrintForHappy] is close to the ocamlyacc mode, but attempts to produce
+   happy-compatible output.
+
+   [PrintUnitActions _] causes all OCaml/Haskell code to be suppressed: the
+   semantic actions are replaced with unit actions, preludes and postludes
+   disappear, %parameter declarations disappear. Every %type declaration
+   carries the [unit] type.
 
    [PrintUnitActions true] in addition declares that every token carries a
    semantic value of type [unit].
@@ -63,7 +66,8 @@ let print_ocamltype ty : string =
 let print_ocamltype ty : string =
   let s = print_ocamltype ty in
   match mode with
-  | PrintForOCamlyacc ->
+  | PrintForOCamlyacc
+  | PrintForHappy ->
       (* ocamlyacc does not allow a %type declaration to contain
          a new line. Replace it with a space. *)
       String.map (function '\r' | '\n' -> ' ' | c -> c) s
@@ -79,6 +83,7 @@ let print_token_type (prop : token_properties) =
   match mode with
   | PrintNormal
   | PrintForOCamlyacc
+  | PrintForHappy
   | PrintUnitActions false ->
       Misc.o2s prop.tk_ocamltype print_ocamltype
   | PrintUnitActions true ->
@@ -91,7 +96,8 @@ let print_token_type (prop : token_properties) =
 let print_nonterminal_type ty =
   match mode with
   | PrintNormal
-  | PrintForOCamlyacc ->
+  | PrintForOCamlyacc
+  | PrintForHappy ->
       print_ocamltype ty
   | PrintUnitActions _ ->
       " <unit>"
@@ -105,22 +111,35 @@ let print_binding id =
   | PrintNormal ->
       id ^ " = "
   | PrintForOCamlyacc
+  | PrintForHappy
   | PrintUnitActions _ ->
       (* need not, or must not, bind a semantic value *)
       ""
 
 (* -------------------------------------------------------------------------- *)
 
-(* Testing whether it is permitted to print OCaml code (semantic actions,
-   prelude, postlude). *)
+(* Testing whether it is permitted to print language specific code
+   (semantic actions, prelude, postlude). *)
 
-let if_ocaml_code_permitted f x =
+let if_normal_ocaml_code_permitted f x =
   match mode with
   | PrintNormal
   | PrintForOCamlyacc ->
       f x
-  | PrintUnitActions _ ->
+  | PrintUnitActions _
+  | PrintForHappy ->
       (* In these modes, all OCaml code is omitted: semantic actions,
+         preludes, postludes, etc. *)
+      ()
+
+let if_only_haskell_code_permitted f x =
+  match mode with
+  | PrintForHappy ->
+      f x
+  | PrintNormal
+  | PrintUnitActions _
+  | PrintForOCamlyacc ->
+      (* In these modes, all Haskell code is omitted: semantic actions,
          preludes, postludes, etc. *)
       ()
 
@@ -133,7 +152,8 @@ let attributes_printed : bool =
   | PrintNormal
   | PrintUnitActions _ ->
       true
-  | PrintForOCamlyacc ->
+  | PrintForOCamlyacc
+  | PrintForHappy ->
       false
 
 (* -------------------------------------------------------------------------- *)
@@ -148,7 +168,8 @@ let print_semantic_action f g branch =
       ()
   | PrintNormal ->
       Printer.print_expr mode f e
-  | PrintForOCamlyacc ->
+  | PrintForOCamlyacc
+  | PrintForHappy ->
        (* In ocamlyacc-compatibility mode, the code must be wrapped in
           [let]-bindings whose right-hand side uses the [$i] keywords. *)
       let bindings =
@@ -188,9 +209,9 @@ let print_semantic_action f g branch =
 
 (* Printing preludes and postludes. *)
 
-let print_preludes f g =
+let print_preludes delim f g =
   List.iter (fun prelude ->
-    fprintf f "%%{%s%%}\n" prelude.stretch_raw_content
+    fprintf f "%s{%s%s}\n" delim prelude.stretch_raw_content delim
   ) g.preludes
 
 let print_postludes f g =
@@ -203,9 +224,16 @@ let print_postludes f g =
 (* Printing %start declarations. *)
 
 let print_start_symbols f g =
-  StringSet.iter (fun symbol ->
-    fprintf f "%%start %s\n" (Misc.normalize symbol)
-  ) g.start_symbols
+  match mode with
+  | PrintForHappy ->
+     StringSet.iter (fun symbol ->
+       let s = Misc.normalize symbol in
+       fprintf f "%%name %s %s\n" s s
+     ) g.start_symbols
+  | _ ->    
+     StringSet.iter (fun symbol ->
+       fprintf f "%%start %s\n" (Misc.normalize symbol)
+     ) g.start_symbols
 
 (* -------------------------------------------------------------------------- *)
 
@@ -219,6 +247,7 @@ let print_parameters f g =
   | PrintNormal ->
       List.iter (print_parameter f) g.parameters
   | PrintForOCamlyacc
+  | PrintForHappy
   | PrintUnitActions _ ->
        (* %parameter declarations are not supported by ocamlyacc,
           and presumably become useless when the semantic actions
@@ -270,13 +299,23 @@ let compare_tokens (_token, prop) (_token', prop') =
 
 let print_tokens f g =
   (* Print the %token declarations. *)
-  StringMap.iter (fun token prop ->
-    if prop.tk_is_declared then
-      fprintf f "%%token%s %s%a\n"
-        (print_token_type prop)
-        token
-        print_attributes prop.tk_attributes
-  ) g.tokens;
+  (match mode with
+   | PrintForHappy ->
+       (fprintf f "%%token\n";
+        StringMap.iter (fun token prop ->
+         if prop.tk_is_declared then
+           fprintf f "  %s%a {}\n"
+             token
+             print_attributes prop.tk_attributes
+        ) g.tokens)
+   | _ ->
+       StringMap.iter (fun token prop ->
+        if prop.tk_is_declared then
+          fprintf f "%%token%s %s%a\n"
+            (print_token_type prop)
+            token
+            print_attributes prop.tk_attributes
+       ) g.tokens);
   (* Sort the tokens wrt. precedence, and group them into levels. *)
   let levels : (string * token_properties) list list =
     Misc.levels compare_tokens (List.sort compare_tokens (
@@ -296,16 +335,32 @@ let print_tokens f g =
     end
   ) levels
 
+let print_tokens_lexing_haskell f g =
+  fprintf f "{- (*SML*) fun token_of_string error ty_string a1 a2 = fn\n";
+  StringMap.iter (fun s (s2, _) ->
+    fprintf f "    | %s => %s (ty_string, a1, a2)\n" s s2
+  ) g.aliasmap;
+  fprintf f "    | _ => error\n-}\n"
+
 (* -------------------------------------------------------------------------- *)
 
 (* Printing %type declarations. *)
 
 let print_types f g =
-  StringMap.iter (fun symbol ty ->
-    fprintf f "%%type%s %s\n"
-      (print_nonterminal_type ty)
-      (Misc.normalize symbol)
-  ) g.types
+  match mode with
+   | PrintForHappy ->
+      StringMap.iter (fun symbol ty ->
+        fprintf f "-- %%type%s %s\n"
+          (print_nonterminal_type ty)
+          (Misc.normalize symbol)
+      ) g.types;
+     fprintf f "%%tokentype {}"
+   | _ ->
+      StringMap.iter (fun symbol ty ->
+        fprintf f "%%type%s %s\n"
+          (print_nonterminal_type ty)
+          (Misc.normalize symbol)
+      ) g.types
 
 (* -------------------------------------------------------------------------- *)
 
@@ -402,7 +457,8 @@ let print_on_error_reduce_declarations f g =
   | PrintNormal
   | PrintUnitActions _ ->
       print_on_error_reduce_declarations f g
-  | PrintForOCamlyacc ->
+  | PrintForOCamlyacc
+  | PrintForHappy ->
       (* %on_error_reduce declarations are not supported by ocamlyacc *)
       ()
 
@@ -425,16 +481,19 @@ let print_grammar_attributes f g =
 
 let print f g =
   print_parameters f g;
-  if_ocaml_code_permitted (print_preludes f) g;
+  if_normal_ocaml_code_permitted (print_preludes "%" f) g;
+  if_only_haskell_code_permitted (print_preludes "" f) g;
   print_start_symbols f g;
   print_tokens f g;
+  if_only_haskell_code_permitted (print_tokens_lexing_haskell f) g;
   print_types f g;
   print_on_error_reduce_declarations f g;
   print_grammar_attributes f g;
   fprintf f "%%%%\n";
   print_rules f g;
-  fprintf f "\n%%%%\n";
-  if_ocaml_code_permitted (print_postludes f) g
+  fprintf f "\n";
+  if_normal_ocaml_code_permitted (fun g -> fprintf f "%%%%\n"; print_postludes f g) g;
+  if_only_haskell_code_permitted (print_postludes f) g
 
 end
 

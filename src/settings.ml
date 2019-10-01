@@ -83,6 +83,7 @@ let noprefix =
 type print_mode =
     | PrintNormal
     | PrintForOCamlyacc
+    | PrintForHappy
     | PrintUnitActions of bool       (* if true, declare unit tokens *)
 
 type preprocess_mode =
@@ -336,6 +337,8 @@ let options = Arg.align [
                        " Print grammar and exit";
   "--only-preprocess-for-ocamlyacc", Arg.Unit (fun () -> preprocess_mode := PMOnlyPreprocess PrintForOCamlyacc),
                        " Print grammar in ocamlyacc format and exit";
+  "--only-preprocess-for-happy", Arg.Unit (fun () -> preprocess_mode := PMOnlyPreprocess PrintForHappy),
+                       " Print grammar in happy format and exit";
   "--only-preprocess-u", Arg.Unit (fun () -> preprocess_mode := PMOnlyPreprocess (PrintUnitActions false)),
                          " Print grammar with unit actions and exit";
   "--only-preprocess-uu", Arg.Unit (fun () -> preprocess_mode := PMOnlyPreprocess (PrintUnitActions true)),

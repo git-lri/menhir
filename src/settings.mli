@@ -65,6 +65,7 @@ val trace: bool
 type print_mode =
     | PrintNormal
     | PrintForOCamlyacc
+    | PrintForHappy
     | PrintUnitActions of bool       (* if true, declare unit tokens *)
 
 type preprocess_mode =
