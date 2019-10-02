@@ -229,7 +229,8 @@ let print_start_symbols f g =
      StringSet.iter (fun symbol ->
        let s = Misc.normalize symbol in
        fprintf f "%%name %s %s\n" s s
-     ) g.start_symbols
+     ) ((* FIXME: not yet generic *)
+        List.fold_left (fun set x -> StringSet.add x set) g.start_symbols ["external_declaration"; "statement"; "expression"])
   | _ ->    
      StringSet.iter (fun symbol ->
        fprintf f "%%start %s\n" (Misc.normalize symbol)
